@@ -1,8 +1,17 @@
 # mesen-lua-bridge-mcp
 
-An MCP server that lets an LLM execute arbitrary Lua inside the running Mesen 2 emulator. Should work for any system Mesen 2 supports; tested with SNES.
+An MCP server that lets an LLM execute arbitrary Lua inside the running Mesen 2 emulator. The LLM can read the MESEN 2 Lua documentation and come up with arbitrary Lua code, no need to encode that API into the MCP commands. This keeps the architecture & version compatibility much simpler. It also gives more freedom to the LLM to come up with interesting solutions.
 
-Each call carries a short description that's logged to Mesen's Script Window, so you can follow along, audit what ran, and learn from the process — which makes it a great fit for picking up reverse engineering with an LLM narrating each step.
+Should work for any system Mesen 2 supports; tested with SNES.
+
+Each call carries a short description that's logged to Mesen's Script Window, so you can follow along, audit what ran, and learn from the process — which makes it a great fit for picking up reverse engineering with an LLM narrating each step. Later you can ask the LLM why it did certain steps.
+
+
+Demo below (Lightly scripted to keep it short, but based on a real debugging session)
+
+https://github.com/user-attachments/assets/3379bf00-03aa-425e-a089-717eec883cae
+
+I used this MCP + Claude Code to reverse engineer & write this [Inindo Way of the Ninja Patcher Web Tool](https://github.com/gareve/inindo-way-of-the-ninja-snes-patcher)
 
 ## Prerequisites
 
@@ -49,10 +58,7 @@ https://github.com/user-attachments/assets/3d1a4c9d-0ab6-46a8-b2ba-331ba4b2c1ea
 
 
 
-
-
-
-## Wire into Claude Code
+## Wire into Claude Code (or any other MCP-compatible LLM)
 
 A project-scoped `.mcp.json` is committed in this repo, so Claude Code will pick it up automatically when you run `claude` from the project directory. Confirm with:
 
