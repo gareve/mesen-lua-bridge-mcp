@@ -8,13 +8,18 @@
 -- Requires Mesen's "Allow access to I/O and OS functions" toggle to be ON.
 -- Bumping "Script timeout" to 10s is recommended.
 
--- Mirror Node's os.tmpdir() lookup order so both sides land on the same dir
--- across macOS / Linux / Windows without coordination.
+-- Both sides must agree on a single path. On POSIX we hardcode /tmp because
+-- macOS GUI apps (Mesen) and CLI children (the MCP server) often have
+-- different $TMPDIR values, which would split the rendezvous. On Windows
+-- there is no universal equivalent, so fall back to %TEMP% / %TMP%.
+local function isWindows()
+  return package.config:sub(1, 1) == "\\"
+end
 local function tmpdir()
-  local env = os.getenv("TMPDIR") or os.getenv("TMP") or os.getenv("TEMP")
-  if env and #env > 0 then
-    -- Strip a single trailing separator if present.
-    return (env:gsub("[/\\]$", ""))
+  if isWindows() then
+    local env = os.getenv("TEMP") or os.getenv("TMP")
+    if env and #env > 0 then return (env:gsub("[/\\]$", "")) end
+    return "C:\\Temp"
   end
   return "/tmp"
 end

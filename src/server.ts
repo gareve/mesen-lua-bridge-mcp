@@ -21,7 +21,13 @@ import * as path from "node:path";
 // Layout
 // ---------------------------------------------------------------------------
 
-const BRIDGE_ROOT  = path.join(os.tmpdir(), "mesen-mcp");
+// Both sides must agree on a single path. On POSIX we hardcode /tmp because
+// macOS GUI apps (Mesen) and CLI children (this server) often have different
+// $TMPDIR values, which would split the rendezvous. On Windows there is no
+// universal equivalent, so use os.tmpdir() (resolves %TEMP%/%TMP%).
+const BRIDGE_ROOT  = process.platform === "win32"
+  ? path.join(os.tmpdir(), "mesen-mcp")
+  : "/tmp/mesen-mcp";
 const SESSION_DIR  = path.join(BRIDGE_ROOT, String(process.pid));
 const ACTIVE_PTR   = path.join(BRIDGE_ROOT, "active");
 const ALIVE_FILE   = path.join(SESSION_DIR, "alive");
