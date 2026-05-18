@@ -42,7 +42,13 @@ You should see a line in the script console:
 (or `[mesen-mcp] bound to session ...` if the MCP server is already running.)
 
 
-https://github.com/user-attachments/assets/0ee6a90b-0dda-491c-95c0-68dd27a9d098
+
+
+https://github.com/user-attachments/assets/3d1a4c9d-0ab6-46a8-b2ba-331ba4b2c1ea
+
+
+
+
 
 
 
