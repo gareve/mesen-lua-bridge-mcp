@@ -30,6 +30,8 @@ In Mesen's UI:
 4. In the same Settings dialog, raise **"Script timeout"** from the default 1 second to **10 seconds**. The 1s default will abort legitimate RE snippets like memory scans.
 5. Leave **"Auto-start script on load"**, **"Auto-reload script when file changes"**, and **"Auto-restart script after power cycle"** at their defaults (all on). These give you clean restart UX.
 
+https://github.com/user-attachments/assets/3d1a4c9d-0ab6-46a8-b2ba-331ba4b2c1ea
+
 ## Install the server
 
 ```bash
@@ -49,13 +51,6 @@ You should see a line in the script console:
 ```
 
 (or `[mesen-mcp] bound to session ...` if the MCP server is already running.)
-
-
-
-
-https://github.com/user-attachments/assets/3d1a4c9d-0ab6-46a8-b2ba-331ba4b2c1ea
-
-
 
 
 ## Wire into Claude Code (or any other MCP-compatible LLM)
