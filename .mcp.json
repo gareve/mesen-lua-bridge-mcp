@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mesen": {
+      "command": "npx",
+      "args": ["tsx", "src/server.ts"]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "mesen-lua-bridge-mcp",
+  "version": "0.1.0",
+  "description": "MCP server that lets Claude run arbitrary Lua inside the Mesen 2 emulator (SNES reverse engineering).",
+  "license": "MIT",
+  "author": "gareve",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gareve/mesen-lua-bridge-mcp.git"
+  },
+  "homepage": "https://github.com/gareve/mesen-lua-bridge-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/gareve/mesen-lua-bridge-mcp/issues"
+  },
+  "keywords": ["mcp", "model-context-protocol", "mesen", "lua", "snes", "nes", "emulator", "reverse-engineering"],
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
