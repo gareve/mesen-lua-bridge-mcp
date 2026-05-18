@@ -41,6 +41,11 @@ You should see a line in the script console:
 
 (or `[mesen-mcp] bound to session ...` if the MCP server is already running.)
 
+
+https://github.com/user-attachments/assets/0ee6a90b-0dda-491c-95c0-68dd27a9d098
+
+
+
 ## Wire into Claude Code
 
 A project-scoped `.mcp.json` is committed in this repo, so Claude Code will pick it up automatically when you run `claude` from the project directory. Confirm with:
