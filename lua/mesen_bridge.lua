@@ -209,3 +209,105 @@ else
   logSafe("[mesen-mcp] bridge registered; waiting for an MCP server to claim "
        .. ACTIVE_PTR)
 end
+
+----------------------------------------------------------------------------
+-- Callback tracking
+--
+-- Wraps emu.add/removeEventCallback and emu.add/removeMemoryCallback so
+-- every callback registered through execute_lua is stored in _mcpCallbacks
+-- keyed by a human-readable label. The MCP server's clear_callbacks tool
+-- calls _mcpClearCallback(label) or _mcpClearCallbacks() to remove them.
+--
+-- The bridge's own tick callback (registered above) is intentionally NOT
+-- tracked — it must survive any user-requested clear.
+--
+-- Usage from Lua sent via execute_lua:
+--   emu.addEventCallback(fn, emu.eventType.endFrame, "my label")
+--   emu.addMemoryCallback(fn, emu.callbackType.write, 0x7E0010, 0x7E0010, emu.memType.snesMemory, "my label")
+----------------------------------------------------------------------------
+
+_mcpCallbacks = {}
+
+local _origAddEvent    = emu.addEventCallback
+local _origRemoveEvent = emu.removeEventCallback
+local _origAddMem      = emu.addMemoryCallback
+local _origRemoveMem   = emu.removeMemoryCallback
+
+function _mcpClearCallback(label)
+  local kept, count = {}, 0
+  for _, cb in ipairs(_mcpCallbacks) do
+    if cb.label == label then
+      count = count + 1
+      if cb.kind == "event" then
+        pcall(_origRemoveEvent, cb.handle, cb.eventType)
+      else
+        pcall(_origRemoveMem, cb.handle, cb.callbackType, cb.startAddr, cb.endAddr, cb.memType)
+      end
+    else
+      kept[#kept + 1] = cb
+    end
+  end
+  _mcpCallbacks = kept
+  return "cleared " .. count .. " callback(s) with label '" .. label .. "'"
+end
+
+function _mcpClearCallbacks()
+  local count = #_mcpCallbacks
+  for _, cb in ipairs(_mcpCallbacks) do
+    if cb.kind == "event" then
+      pcall(_origRemoveEvent, cb.handle, cb.eventType)
+    else
+      pcall(_origRemoveMem, cb.handle, cb.callbackType, cb.startAddr, cb.endAddr, cb.memType)
+    end
+  end
+  _mcpCallbacks = {}
+  return "cleared " .. count .. " callback(s)"
+end
+
+emu.addEventCallback = function(fn, eventType, label)
+  local handle = _origAddEvent(fn, eventType)
+  if handle ~= nil then
+    _mcpCallbacks[#_mcpCallbacks + 1] = {
+      kind = "event", handle = handle, eventType = eventType, label = label or "",
+    }
+  end
+  return handle
+end
+
+emu.removeEventCallback = function(handle, eventType)
+  local result = _origRemoveEvent(handle, eventType)
+  local kept = {}
+  for _, cb in ipairs(_mcpCallbacks) do
+    if not (cb.kind == "event" and cb.handle == handle and cb.eventType == eventType) then
+      kept[#kept + 1] = cb
+    end
+  end
+  _mcpCallbacks = kept
+  return result
+end
+
+if _origAddMem then
+  emu.addMemoryCallback = function(fn, callbackType, startAddr, endAddr, memType, label)
+    local handle = _origAddMem(fn, callbackType, startAddr, endAddr, memType)
+    if handle ~= nil then
+      _mcpCallbacks[#_mcpCallbacks + 1] = {
+        kind = "memory", handle = handle,
+        callbackType = callbackType, startAddr = startAddr, endAddr = endAddr, memType = memType,
+        label = label or "",
+      }
+    end
+    return handle
+  end
+
+  emu.removeMemoryCallback = function(handle, callbackType, startAddr, endAddr, memType)
+    local result = _origRemoveMem(handle, callbackType, startAddr, endAddr, memType)
+    local kept = {}
+    for _, cb in ipairs(_mcpCallbacks) do
+      if not (cb.kind == "memory" and cb.handle == handle) then
+        kept[#kept + 1] = cb
+      end
+    end
+    _mcpCallbacks = kept
+    return result
+  end
+end

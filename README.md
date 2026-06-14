@@ -130,6 +130,31 @@ Errors are also:
 - Printed to Mesen's Script Window console (first line only, no stack trace): `[mesen-mcp] error #3: ...`
 - Written to `/tmp/mesen-mcp/mesen_errors.log` with full stack traces and sequence numbers, wiped on each bridge reload.
 
+## Callback tracking
+
+`emu.addEventCallback` and `emu.addMemoryCallback` are wrapped by the bridge. Every callback registered through `execute_lua` is stored in the global `_mcpCallbacks` table. The MCP server exposes a `clear_callbacks` tool to remove them by label or all at once.
+
+**Always pass a label when registering a callback:**
+
+```lua
+-- third arg to addEventCallback is the label
+emu.addEventCallback(fn, emu.eventType.endFrame, "frame counter")
+
+-- sixth arg to addMemoryCallback is the label
+emu.addMemoryCallback(fn, emu.callbackType.write, 0x7E0010, 0x7E0010, emu.memType.snesMemory, "hp watcher")
+```
+
+**Clearing via the `clear_callbacks` tool:**
+
+```
+clear_callbacks({ label: "frame counter" })  -- removes only callbacks with that label
+clear_callbacks({})                          -- removes all tracked callbacks
+```
+
+If you call `clear_callbacks({})` at the start of a session, you avoid stale callbacks from a previous MCP run accumulating in Mesen.
+
+The bridge's own internal tick callback is never tracked and cannot be cleared.
+
 ## Known limitations (PoC scope)
 
 - **Single in-flight request per session.** Concurrent `execute_lua` calls serialize via a mutex. Fine for interactive RE work; revisit if you want pipelined batch operations.

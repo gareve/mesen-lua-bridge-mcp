@@ -278,7 +278,7 @@ Common Mesen 2 API entry points (full reference: https://www.mesen.ca/docs/apire
   - emu.getState()                        table of CPU/PPU registers and timing
   - emu.getRomInfo()                      ROM header / file path / format
   - emu.log(msg)                          append to Mesen's script console
-  - emu.addEventCallback(fn, type)        hook events. WARNING: callbacks persist across execute_lua calls and will accumulate if registered repeatedly. Use emu.removeEventCallback to clean up.
+  - emu.addEventCallback(fn, type, label)        hook events. Pass a short label string as the third argument so the bridge tracks the callback — e.g. emu.addEventCallback(fn, emu.eventType.endFrame, "frame counter"). Use the clear_callbacks tool to remove by label. WARNING: without a label, callbacks accumulate across sessions and cannot be selectively cleared.
 
 SNES memType values (use as the second arg to read/write):
   - emu.memType.snesMemory       CPU bus — addresses look like $7E0000 (WRAM), $00:8000 (ROM), etc.
@@ -338,6 +338,48 @@ server.tool(
     const errCount = readBridgeErrorCount();
     const text = `${result}\n---\nbridge_errors: ${errCount}`;
     return { content: [{ type: "text", text }] };
+  },
+);
+
+server.tool(
+  "clear_callbacks",
+  `Remove Lua callbacks that were registered via execute_lua.
+
+The Mesen bridge wraps emu.addEventCallback and emu.addMemoryCallback to track every callback registered through execute_lua in a table (_mcpCallbacks). This tool removes them by label (or all at once), preventing callbacks from accumulating across sessions.
+
+Parameters:
+  - label (optional): the label string passed as the last argument when the callback was registered.
+      - Provided → removes all callbacks with that exact label.
+      - Omitted  → removes every tracked callback (full reset).
+
+Label pattern — when registering callbacks via execute_lua, always pass a label:
+  emu.addEventCallback(fn, emu.eventType.endFrame, "frame counter")
+  emu.addMemoryCallback(fn, emu.callbackType.write, 0x7E0010, 0x7E0010, emu.memType.snesMemory, "hp watcher")
+
+Then clear selectively:
+  clear_callbacks({ label: "frame counter" })   -- removes only the frame counter hook
+  clear_callbacks({})                           -- removes all tracked callbacks
+
+Returns a confirmation message with the number of callbacks removed.
+
+Note: the bridge's own internal tick callback is never tracked and cannot be cleared.`,
+  {
+    label: z.string().optional()
+      .describe("Label of the callbacks to remove. Omit to remove all tracked callbacks."),
+  },
+  async ({ label }) => {
+    const code        = label !== undefined ? `_mcpClearCallback(${JSON.stringify(label)})` : `_mcpClearCallbacks()`;
+    const description = label !== undefined ? `clear callbacks: ${label}` : "clear all callbacks";
+    let result: string;
+    try {
+      result = await executeLua(code, DEFAULT_TIMEOUT_MS, description);
+    } catch (err) {
+      const errCount = readBridgeErrorCount();
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`${msg}\n---\nbridge_errors: ${errCount}`);
+    }
+    const errCount = readBridgeErrorCount();
+    return { content: [{ type: "text", text: `${result}\n---\nbridge_errors: ${errCount}` }] };
   },
 );
 
