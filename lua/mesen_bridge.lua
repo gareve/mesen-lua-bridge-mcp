@@ -24,12 +24,16 @@ local function tmpdir()
   return "/tmp"
 end
 
-local BRIDGE_ROOT       = tmpdir() .. "/mesen-mcp"
-local ACTIVE_PTR        = BRIDGE_ROOT .. "/active"
-local POLL_ACTIVE_EVERY = 60      -- frames between re-reading the active pointer (~1s at 60Hz)
+local BRIDGE_ROOT        = tmpdir() .. "/mesen-mcp"
+local ACTIVE_PTR         = BRIDGE_ROOT .. "/active"
+local ERROR_LOG          = BRIDGE_ROOT .. "/mesen_errors.log"
+local ERROR_COUNT_FILE   = BRIDGE_ROOT .. "/error_count.txt"
+local POLL_ACTIVE_EVERY  = 60     -- frames between re-reading the active pointer (~1s at 60Hz)
 
 local sessionDir = nil
 local tickCount  = 0
+
+_errorCount = 0
 
 ----------------------------------------------------------------------------
 -- IO helpers
@@ -61,6 +65,16 @@ local function logSafe(msg)
   if emu and emu.log then
     pcall(emu.log, msg)
   end
+end
+
+local function appendErrorLog(msg)
+  local f = io.open(ERROR_LOG, "ab")
+  if not f then return end
+  f:write(msg .. "\n")
+  f:close()
+  _errorCount = _errorCount + 1
+  pcall(writeFileAtomic, ERROR_COUNT_FILE, tostring(_errorCount))
+  logSafe("[mesen-mcp] error #" .. _errorCount .. ": " .. (msg:match("^([^\n]+)") or msg))
 end
 
 ----------------------------------------------------------------------------
@@ -156,6 +170,7 @@ local function processRequest()
   else
     status  = "ERR"
     payload = tostring(results[2] or "<unknown error>")
+    appendErrorLog("[seq=" .. seq .. "] " .. payload)
   end
 
   pcall(writeFileAtomic, respPath, buildResponse(seq, status, payload))
@@ -177,6 +192,8 @@ end
 -- Bootstrap
 ----------------------------------------------------------------------------
 
+pcall(os.remove, ERROR_LOG)
+pcall(os.remove, ERROR_COUNT_FILE)
 pcall(refreshSessionDir)
 
 if not emu or not emu.addEventCallback then

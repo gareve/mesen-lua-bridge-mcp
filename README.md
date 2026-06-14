@@ -115,6 +115,21 @@ Walk through these once to confirm the no-restart story holds. Each step assumes
 
 **Your MCP client can't see the tool** — for Claude Code, `claude mcp list` should show `mesen`; check `.mcp.json` is being loaded (use `claude` from the project dir) or run the `claude mcp add` command above. For other clients, verify the stdio server is launched with the repo as its working directory.
 
+## Error visibility
+
+Every `execute_lua` response — success or failure — includes a trailer:
+
+```
+---
+bridge_errors: 3
+```
+
+`bridge_errors` is a cumulative count of Lua errors since the bridge script was last loaded. It resets to 0 on each bridge reload. When the LLM sees it increment, it knows something went wrong even if the most recent call succeeded.
+
+Errors are also:
+- Printed to Mesen's Script Window console (first line only, no stack trace): `[mesen-mcp] error #3: ...`
+- Written to `/tmp/mesen-mcp/mesen_errors.log` with full stack traces and sequence numbers, wiped on each bridge reload.
+
 ## Known limitations (PoC scope)
 
 - **Single in-flight request per session.** Concurrent `execute_lua` calls serialize via a mutex. Fine for interactive RE work; revisit if you want pipelined batch operations.

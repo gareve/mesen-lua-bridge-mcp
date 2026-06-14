@@ -28,12 +28,13 @@ import * as path from "node:path";
 const BRIDGE_ROOT  = process.platform === "win32"
   ? path.join(os.tmpdir(), "mesen-mcp")
   : "/tmp/mesen-mcp";
-const SESSION_DIR  = path.join(BRIDGE_ROOT, String(process.pid));
-const ACTIVE_PTR   = path.join(BRIDGE_ROOT, "active");
-const ALIVE_FILE   = path.join(SESSION_DIR, "alive");
-const EPOCH_FILE   = path.join(SESSION_DIR, "epoch");
-const REQUEST_FILE = path.join(SESSION_DIR, "request.lua");
-const RESPONSE_FILE = path.join(SESSION_DIR, "response.txt");
+const SESSION_DIR       = path.join(BRIDGE_ROOT, String(process.pid));
+const ACTIVE_PTR        = path.join(BRIDGE_ROOT, "active");
+const ERROR_COUNT_FILE  = path.join(BRIDGE_ROOT, "error_count.txt");
+const ALIVE_FILE        = path.join(SESSION_DIR, "alive");
+const EPOCH_FILE        = path.join(SESSION_DIR, "epoch");
+const REQUEST_FILE      = path.join(SESSION_DIR, "request.lua");
+const RESPONSE_FILE     = path.join(SESSION_DIR, "response.txt");
 
 const STALE_DIR_MS       = 60_000;
 const HEARTBEAT_MS       = 1_000;
@@ -145,6 +146,16 @@ function parseFrame(raw: string): BridgeFrame | null {
   const body = afterStatus.slice(lenMatch[0].length, lenMatch[0].length + len);
 
   return { seq: seqMatch[1], status, payload: body };
+}
+
+function readBridgeErrorCount(): number {
+  try {
+    const raw = fs.readFileSync(ERROR_COUNT_FILE, "utf8").trim();
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
 }
 
 function epochInfo(): string {
@@ -316,12 +327,17 @@ server.tool(
     if (sanitized.length === 0) {
       throw new Error("description must be non-empty after stripping whitespace/newlines");
     }
-    const result = await executeLua(
-      code,
-      timeoutMs ?? DEFAULT_TIMEOUT_MS,
-      sanitized,
-    );
-    return { content: [{ type: "text", text: result }] };
+    let result: string;
+    try {
+      result = await executeLua(code, timeoutMs ?? DEFAULT_TIMEOUT_MS, sanitized);
+    } catch (err) {
+      const errCount = readBridgeErrorCount();
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(`${msg}\n---\nbridge_errors: ${errCount}`);
+    }
+    const errCount = readBridgeErrorCount();
+    const text = `${result}\n---\nbridge_errors: ${errCount}`;
+    return { content: [{ type: "text", text }] };
   },
 );
 
